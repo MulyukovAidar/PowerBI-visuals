@@ -78,6 +78,7 @@ export interface SankeyDiagramNode extends
     selectableDataPoints?: SelectableDataPoint[];
     cloneLink?: SankeyDiagramNode;
     settings?: SankeyDiagramNodePositionSetting;
+    highlight: number;
 }
 
 export interface SankeyDiagramLink extends

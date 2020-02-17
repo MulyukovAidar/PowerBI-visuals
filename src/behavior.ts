@@ -124,6 +124,7 @@ export class SankeyDiagramBehavior implements IInteractiveBehavior {
     }
 
     public renderSelection(hasSelection: boolean): void {
+        debugger;
         sankeyDiagramUtils.updateFillOpacity(
             this.behaviorOptions.links,
             this.behaviorOptions.interactivityService,

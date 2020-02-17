@@ -294,6 +294,9 @@ export class SankeyDiagram implements IVisual {
             .classed(SankeyDiagram.ClassName, true);
 
         this.interactivityService = createInteractivityService(this.visualHost);
+        (<any>this.interactivityService).selectionManager.registerOnSelectCallback(() => {
+            debugger;
+        });
         this.behavior = SankeyDiagramBehavior.create();
         this.clearCatcher = appendClearCatcher(this.root);
 
@@ -331,11 +334,15 @@ export class SankeyDiagram implements IVisual {
         sankeyDiagramDataView = this.converter(dataView);
 
         this.computePositions(sankeyDiagramDataView);
-
+        let hasHighlights: boolean = dataView.categorical.values[0].highlights !== undefined;
         this.dataView = sankeyDiagramDataView;
-
-        this.applySelectionStateToData();
-
+        this.applySelectionStateToData(hasHighlights);
+        // this.dataView.nodes.forEach(node => {
+        //     if (node.highlight) {
+        //         node.selectableDataPoints.forEach(s => s.selected = true);
+        //     }
+        // });
+        // this.applySelectionStateToHighlightedData();
         this.render(sankeyDiagramDataView);
     }
 
@@ -397,8 +404,10 @@ export class SankeyDiagram implements IVisual {
             selectionIdBuilder: SankeyDiagramSelectionIdBuilder = new SankeyDiagramSelectionIdBuilder(
                 this.visualHost,
                 dataView.categorical.categories);
-
+        // property highlights does not exist hack
+        let highlights = dataView.categorical.values[0].highlights;
         nodes = this.createNodes(
+            highlights,
             sourceCategories,
             destinationCategories,
             settings,
@@ -630,6 +639,7 @@ export class SankeyDiagram implements IVisual {
     }
 
     private createNodes(
+        highlights,
         sourceCategories: any[],
         destinationCategories: any[],
         settings: SankeyDiagramSettings,
@@ -695,6 +705,7 @@ export class SankeyDiagram implements IVisual {
             }).length === 0)
 
                 nodes.push({
+                    highlight: highlights && highlights[index] || null,
                     label: label,
                     links: [],
                     inputWeight: 0,
@@ -1449,8 +1460,8 @@ export class SankeyDiagram implements IVisual {
         });
     }
 
-    private applySelectionStateToData(): void {
-        this.interactivityService.applySelectionStateToData(this.getSelectableDataPoints());
+    private applySelectionStateToData(hasHighlights: boolean): void {
+        this.interactivityService.applySelectionStateToData(this.getSelectableDataPoints(), false);
     }
 
     private getSelectableDataPoints(): SelectableDataPoint[] {
@@ -1476,8 +1487,10 @@ export class SankeyDiagram implements IVisual {
         this.renderTooltip(nodesSelection);
 
         this.bindSelectionHandler(nodesSelection, linksSelection);
-
-        this.updateSelectionState(nodesSelection, linksSelection);
+        let hasHighlights = sankeyDiagramDataView.nodes.filter(node => node.highlight).length > 0;
+        debugger;
+        // this.behavior.renderSelection(false);
+        this.updateSelectionState(nodesSelection, linksSelection, hasHighlights);
     }
 
     private renderNodes(sankeyDiagramDataView: SankeyDiagramDataView): Selection<SankeyDiagramNode> {
@@ -1486,16 +1499,16 @@ export class SankeyDiagram implements IVisual {
             .selectAll(SankeyDiagram.NodeSelector.selectorName);
 
         let nodesSelectionData = nodeElements
-        .data(
-            sankeyDiagramDataView.nodes
-                .filter((node: SankeyDiagramNode) => {
-                    return node.height > SankeyDiagram.MinSize;
-                })
+            .data(
+                sankeyDiagramDataView.nodes
+                    .filter((node: SankeyDiagramNode) => {
+                        return node.height > SankeyDiagram.MinSize;
+                    })
             );
 
         nodesSelectionData
-                .exit()
-                .remove();
+            .exit()
+            .remove();
 
         let nodesEnterSelection: Selection<SankeyDiagramNode> = nodesSelectionData
             .enter()
@@ -1748,15 +1761,15 @@ export class SankeyDiagram implements IVisual {
 
         let linksSelectionData: UpdateSelection<SankeyDiagramLink> =
             linksElements
-            .data(
-                sankeyDiagramDataView.links.filter((link: SankeyDiagramLink) => {
-                    return link.height > SankeyDiagram.MinSize;
-                }).sort((a: SankeyDiagramLink, b: SankeyDiagramLink) => {
-                    // sort links to draw forward links in the first, backward links draw as second and selflinks as the last
-                    // in this case self links will be on front side
-                    return a.direction < b.direction ? -1 : a.direction > b.direction ? 1 : 0;
-                })
-            );
+                .data(
+                    sankeyDiagramDataView.links.filter((link: SankeyDiagramLink) => {
+                        return link.height > SankeyDiagram.MinSize;
+                    }).sort((a: SankeyDiagramLink, b: SankeyDiagramLink) => {
+                        // sort links to draw forward links in the first, backward links draw as second and selflinks as the last
+                        // in this case self links will be on front side
+                        return a.direction < b.direction ? -1 : a.direction > b.direction ? 1 : 0;
+                    })
+                );
 
         linksSelectionData
             .exit()
@@ -2228,17 +2241,20 @@ export class SankeyDiagram implements IVisual {
 
     private updateSelectionState(
         nodesSelection: Selection<SankeyDiagramNode>,
-        linksSelection: Selection<SankeyDiagramLink>): void {
-
-        sankeyDiagramUtils.updateFillOpacity(
+        linksSelection: Selection<SankeyDiagramLink>,
+        hasHighlights: boolean): void {
+        console.log("update");
+        sankeyDiagramUtils.updateFillOpacityForNodes(
             nodesSelection,
             this.interactivityService,
-            false);
-
+            false,
+            hasHighlights);
+        debugger;
         sankeyDiagramUtils.updateFillOpacity(
             linksSelection,
             this.interactivityService,
-            true);
+            true,
+            hasHighlights);
     }
 
     private bindSelectionHandler(

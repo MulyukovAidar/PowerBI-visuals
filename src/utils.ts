@@ -37,8 +37,8 @@ import SelectableDataPoint = interactivitySelectionService.SelectableDataPoint;
 import IInteractivityService = interactivityBaseService.IInteractivityService;
 
 import {
-SankeyDiagramNode,
-SankeyDiagramLink
+    SankeyDiagramNode,
+    SankeyDiagramLink
 } from "./dataInterfaces";
 
 const SelectedClassName: string = "selected";
@@ -80,15 +80,38 @@ export function isDataPointSelected(dataPoint: SankeyDiagramLink | SankeyDiagram
     return selected;
 }
 
+export function updateFillOpacityForNodes(
+    selection: Selection<SankeyDiagramNode>,
+    interactivityService?: IInteractivityService<SelectableDataPoint>,
+    hasSelection: boolean = false,
+    hasHighlights: boolean = false): void {
+
+    if (interactivityService) {
+        hasSelection = interactivityService.hasSelection();
+    }
+
+    selection.classed(SelectedClassName, (dataPoint: SankeyDiagramNode): boolean => {
+        let selected = false;
+        let hasHighlight: boolean = false;
+        if (dataPoint.highlight !== null) {
+            hasHighlight = true;
+        }
+        return getFillOpacity(
+            selected,
+            hasHighlight,
+            hasSelection,
+            !selected && hasHighlights);
+    });
+}
+
 export function updateFillOpacity(
     selection: Selection<SankeyDiagramNode | SankeyDiagramLink>,
     interactivityService?: IInteractivityService<SelectableDataPoint>,
-    hasSelection: boolean = false): void {
-
-    let hasHighlights: boolean = false;
-
+    hasSelection: boolean = false,
+    hasHighlights: boolean = false): void {
+    console.log("updateFillOpacity");
     if (interactivityService) {
-        hasHighlights = interactivityService.hasSelection();
+        hasSelection = interactivityService.hasSelection();
     }
 
     selection.classed(SelectedClassName, (dataPoint: SankeyDiagramLink | SankeyDiagramNode): boolean => {
@@ -99,10 +122,15 @@ export function updateFillOpacity(
         selected = !theDataPointNode && hasSelection
             ? !dataPointSelected
             : dataPointSelected;
-
+        let hasHighlight: boolean = false;
+        if (theDataPointNode) {
+            if ((<SankeyDiagramNode>dataPoint).highlight !== null) {
+                hasHighlight = true;
+            }
+        }
         return getFillOpacity(
             selected,
-            false,
+            hasHighlight,
             hasSelection,
             !selected && hasHighlights);
     });
